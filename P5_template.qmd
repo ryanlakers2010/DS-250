@@ -1,0 +1,400 @@
+---
+title: "Client Report - The War with Star Wars"
+subtitle: "Course DS 250"
+author: "[Ryan Matthews]"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import pandas as pd 
+import numpy as np
+from lets_plot import *
+# add the additional libraries you need to import for ML here
+
+LetsPlot.setup_html(isolated_frame=True)
+```
+
+
+```{python}
+# Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
+
+# Include and execute your code here
+
+# import your data here using pandas and the URL
+
+
+```
+
+## Elevator pitch
+_A SHORT (2-3 SENTENCES) PARAGRAPH THAT `DESCRIBES KEY INSIGHTS` TAKEN FROM METRICS IN THE PROJECT RESULTS THINK TOP OR MOST IMPORTANT RESULTS._ (Note: this is not a summary of the project, but a summary of the results.)
+
+As we can see from the data, we can determine that it doesn't matter what gender, age, or personality they have, everyone that has seen Star Wars, for the most part, loved it and has nothing but good things to say about it. I have prepared some charts to show you.
+
+## QUESTION|TASK 1
+
+__Shorten the column names and clean them up for easier use with pandas.__ Provide a table or list that exemplifies how you fixed the names. 
+
+
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+
+df = pd.read_csv("StarWars.csv")
+
+df.columns = (
+    df.columns
+    .str.strip()
+    .str.lower()
+    .str.replace(r"[^\w\s]", "", regex=True)
+    .str.replace(r"\s+", "_", regex=True)
+)
+
+rename_map = {
+    "respondentid": "respondent_id",
+    "have_you_seen_any_of_the_six_star_wars_films": "seen_star_wars",
+    "do_you_consider_yourself_to_be_a_fan_of_star_wars": "fan_star_wars",
+}
+df.rename(columns=rename_map, inplace=True)
+
+
+```
+
+
+## QUESTION|TASK 2
+
+__Clean and format the data so that it can be used in a machine learning model.__ As you format the data, you should complete each item listed below. In your final report provide example(s) of the reformatted data with a short description of the changes made.  
+    a. Filter the dataset to respondents that have seen at least one film  
+    a. Create a new column that converts the age ranges to a single number. Drop the age range categorical column  
+    a. Create a new column that converts the education groupings to a single number. Drop the school categorical column  
+    a. Create a new column that converts the income ranges to a single number. Drop the income range categorical column  
+    a. Create your target (also known as “y” or “label”) column based on the new income range column  
+    a. One-hot encode all remaining categorical columns   
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+
+# Load your cleaned dataset (if not already loaded)
+df = pd.read_csv("StarWars_cleaned.csv")  # or use df from earlier steps
+
+# Identify film columns (example based on naming convention)
+film_columns = [col for col in df.columns if col.startswith("film_")]
+
+# Create a new column to count how many films each respondent has seen
+df["films_seen_count"] = df[film_columns].sum(axis=1)
+
+# Filter: only keep respondents who have seen at least one film
+df_filtered = df[df["films_seen_count"] > 0]
+
+# (Optional) Drop the helper column
+df_filtered.drop(columns=["films_seen_count"], inplace=True)
+
+
+```
+
+```{python}
+import pandas as pd
+
+age_map = {
+    "18-29": 23.5,
+    "30-44": 37.0,
+    "45-60": 52.5,
+    "> 60": 65.0,
+    "60+": 65.0, 
+    "Under 18": 16.0
+}
+
+df["age_midpoint"] = df["what_is_your_age"].map(age_map)
+df.drop(columns=["what_is_your_age"], inplace=True)
+
+
+```
+
+```{python}
+
+education_map = {
+    "Less than high school degree": 0,
+    "High school degree": 1,
+    "Some college or Associate degree": 2,
+    "Bachelor degree": 3,
+    "Graduate degree": 4
+}
+
+
+df["education_level"] = df["what_is_the_highest_level_of_education_you_have_completed"].map(education_map)
+
+
+df.drop(columns=["what_is_the_highest_level_of_education_you_have_completed"], inplace=True)
+
+
+```
+
+```{python}
+# Include and execute your code here
+
+income_map = {
+    "Under $25,000": 12500,
+    "$25,000 - $49,999": 37500,
+    "$50,000 - $99,999": 75000,
+    "$100,000 - $149,999": 125000,
+    "$150,000+": 150000,
+    "Prefer not to answer": None
+}
+
+
+df["income_midpoint"] = df["what_is_your_household_income"].map(income_map)
+
+df.drop(columns=["what_is_your_household_income"], inplace=True)
+
+
+```
+
+```{python}
+# Include and execute your code here
+def income_group(income):
+    if pd.isna(income):
+        return None
+    elif income < 50000:
+        return 0  # Low income
+    elif income < 100000:
+        return 1  # Middle income
+    else:
+        return 2  # High income
+
+df["income_label"] = df["income_midpoint"].apply(income_group)
+
+
+```
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+
+
+categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+
+
+print("Categorical columns to encode:", categorical_cols)
+
+
+df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)  
+
+
+```
+
+## QUESTION|TASK 3
+
+__Validate that the data provided on GitHub lines up with the article by recreating 2 of the visuals from the article.__  
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+
+df = pd.read_csv("StarWars.csv", encoding="ISO-8859-1")
+import matplotlib.pyplot as plt
+
+film_cols = [col for col in df.columns if "Which of the following Star Wars films" in col]
+
+
+film_counts = df[film_cols].notna().sum()
+
+
+film_names = [
+    "Episode I",
+    "Episode II",
+    "Episode III",
+    "Episode IV",
+    "Episode V",
+    "Episode VI"
+]
+film_counts.index = film_names
+
+
+film_counts.plot(kind='bar', color='skyblue', title="Films Seen by Respondents")
+plt.ylabel("Number of Respondents")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+char_col = "Who shot first?"
+
+
+char_counts = df[char_col].value_counts().dropna()
+
+char_counts.plot(kind='bar', color='lightgreen', title="Who Shot First?")
+plt.ylabel("Number of Respondents")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.show()
+
+
+```
+
+```{python}
+# Include and execute your code here
+
+```
+
+## QUESTION|TASK 4
+
+__Build a machine learning model that predicts whether a person makes more than $50k. Describe your model and report the accuracy.__ 
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+
+df['target'] = df['income_midpoint'].apply(lambda x: 1 if x > 50000 else 0)
+
+
+df = df.dropna(subset=['target'])
+
+
+X = df.drop(columns=['target', 'income_midpoint'])
+y = df['target']
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+
+print(f"Model accuracy on test set: {accuracy:.2%}")
+print(classification_report(y_test, y_pred))
+
+```
+
+---
+
+## STRETCH QUESTION|TASK 1
+
+__Build a machine learning model that predicts whether a person makes more than $50k. With accuracy of at least 65%. Describe your model and report the accuracy.__
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+df['income_label'] = df['income_midpoint'].apply(lambda x: 1 if x > 50000 else 0)
+
+
+df = df.dropna(subset=['income_label'])
+
+X = df.drop(columns=['income_midpoint', 'income_label'])
+y = df['income_label']
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+
+rf = RandomForestClassifier(n_estimators=100, random_state=42)
+rf.fit(X_train, y_train)
+
+y_pred = rf.predict(X_test)
+
+
+acc = accuracy_score(y_test, y_pred)
+print(f"Test Accuracy: {acc:.2%}")
+
+
+print(classification_report(y_test, y_pred))
+
+
+```
+
+
+## STRETCH QUESTION|TASK 2
+
+__Validate the data provided on GitHub lines up with the article by recreating a 3rd visual from the article.__
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+import pandas as pd
+
+df = pd.read_csv("StarWars.csv", encoding="ISO-8859-1")  # adjust encoding if needed
+
+char_col = "favorite_character"  
+
+
+char_counts = df[char_col].value_counts().dropna()
+import matplotlib.pyplot as plt
+
+char_counts.plot(kind='bar', color='mediumpurple', title="Favorite Star Wars Characters")
+plt.ylabel("Number of Respondents")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+```
+
+
+## STRETCH QUESTION|TASK 3
+
+__Create a new column that converts the location groupings to a single number. Drop the location categorical column.__  
+
+_type your results and analysis here_
+
+```{python}
+# Include and execute your code here
+location_map = {
+    "Northeast": 0,
+    "Midwest": 1,
+    "South": 2,
+    "West": 3,
+    "Other": 4 
+}
+
+df["location_num"] = df["location"].map(location_map)
+df.drop(columns=["location"], inplace=True)
+
+
+```
+
+---
